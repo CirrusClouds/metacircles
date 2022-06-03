@@ -8,17 +8,23 @@
 
 (defstruct state result env)
 
+(define-condition binding-error (error)
+  ((text :initarg :text :reader text)))
+
+(serapeum:-> one-of-p (list t) boolean)
 (defun one-of-p (predicates term)
   (some (lambda (p) (funcall p term)) predicates))
 
+(serapeum:-> lookup (symbol list) t)
 (defun lookup (id env)
   (if (consp env)
       (let ((looked-up (assoc id (car env))))
         (if looked-up
             (cdr looked-up)
             (lookup id (cdr env))))
-      (error "No binding found")))
+      (error 'binding-error :text "No binding found")))
 
+(serapeum:-> update (symbol t list) list)
 (defun update (sym val env)
   (if (assoc sym (car env))
       (cons (acons sym val (car env)) (cdr env))
@@ -26,9 +32,11 @@
           (cons (car env) (update sym val (cdr env)))
           (cons (acons sym val (car env)) (cdr env)))))
 
+(serapeum:-> make-function (list t list) closure)
 (defun make-function (args exp env)
   (make-closure :params args :body exp :env env))
 
+(serapeum:-> extend (list list list) list)
 (defun extend (args params env)
   (labels ((aux (args params)
              (cond
@@ -45,14 +53,14 @@
                 (error "Edge case?")))))
     (cons (aux args params) env)))
 
-
+(serapeum:-> eval2 (t list) t)
 (defun eval2 (exp env)
   (labels
       ((evaluate-atom (exp env)
          (cond
            ((symbolp exp)
             (make-state :result (lookup exp env) :env env))
-           ((one-of-p (list #'numberp #'symbolp #'standard-char-p) exp)
+           ((one-of-p (list #'numberp #'standard-char-p) exp)
             (make-state :result exp :env env))
            (t
             (error (format nil "Cannot evaluate atom!")))))

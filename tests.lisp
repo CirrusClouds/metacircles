@@ -22,7 +22,7 @@
                          (set x 4)
                          x) (init-env))
                 4))
-  (fiveam:is ('signals 'simple-error
-                 (eval2 '(progn
-                          ((lambda (x) x) 3)
-                          x) (init-env)))))
+  (fiveam:signals binding-error
+    (eval2 '(progn
+             ((lambda (x) x) 3)
+             x) (init-env))))
