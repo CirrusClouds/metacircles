@@ -20,23 +20,11 @@
       (error "No binding found")))
 
 (defun update (sym val env)
-  (cond
-    ((cdr env)
-     (if (assoc sym (car env))
-         (progn
-           (setf (cdr (assoc sym (car env))) val)
-           env)
-         (cons (car env) (update sym val (cdr env)))))
-    ((consp env)
-     (if (assoc sym (car env))
-         (progn
-           (setf (cdr (assoc sym (car env))) val)
-           env)
-         (progn
-           (setf (car env) (acons sym val (car env)))
-           env)))
-    (t
-     (list (acons sym val env)))))
+  (if (assoc sym (car env))
+      (cons (acons sym val (car env)) (cdr env))
+      (if (cdr env)
+          (cons (car env) (update sym val (cdr env)))
+          (cons (acons sym val (car env)) (cdr env)))))
 
 (defun make-function (args exp env)
   (make-closure :params args :body exp :env env))
@@ -47,7 +35,7 @@
                ((consp args)
                 (if (consp params)
                     (acons (car params) (car args)
-                          (aux (cdr args) (cdr params)))
+                           (aux (cdr args) (cdr params)))
                     (error "Number of values don't match")))
                ((not args)
                 (if (not params)
@@ -85,7 +73,6 @@
                               (cdr exp)
                               :initial-value (make-state :result nil :env env)))
                (set (let ((result (evaluate (caddr exp) env)))
-                      (format t "~s" result)
                       (make-state :result (cadr exp)
                                   :env (update (cadr exp) (state-result result)
                                                (state-env result)))))
@@ -103,4 +90,4 @@
                                  (extend args (closure-params closure) (closure-env closure)))))
                  (make-state :result (state-result result)
                              :env (rest (state-env result))))))))
-    (evaluate exp env)))
+    (state-result (evaluate exp env))))

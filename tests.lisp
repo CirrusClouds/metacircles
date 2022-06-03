@@ -11,5 +11,18 @@
   (fiveam:is (equalp
               (eval2 '(lambda (x) x) (init-env))
               (make-closure :params '(x) :body 'x :env (init-env))))
-  (fiveam:is (= (eval2 '((lambda (x) x) 3) (init-env))
-                3)))
+  (fiveam:is (= (eval2 '((lambda (x) x) 3) (init-env)) 3))
+  (fiveam:is (= (eval2 '(progn
+                         (set x 5)
+                         ((lambda (x) (set x 4)) 3)
+                         x) (init-env))
+                5))
+  (fiveam:is (= (eval2 '(progn
+                         (set x 5)
+                         (set x 4)
+                         x) (init-env))
+                4))
+  (fiveam:is ('signals 'simple-error
+                 (eval2 '(progn
+                          ((lambda (x) x) 3)
+                          x) (init-env)))))
