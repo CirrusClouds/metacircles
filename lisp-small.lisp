@@ -19,7 +19,7 @@
 (serapeum:-> init-env () alist-list)
 (defun init-env () '(()))
 
-(defstruct closure params body env)
+(defstruct closure params body)
 
 (defstruct state result (env '(()) :type alist-list))
 
@@ -47,9 +47,9 @@
           (cons (car env) (update sym val (cdr env)))
           (cons (acons sym val (car env)) (cdr env)))))
 
-(serapeum:-> make-function (list t alist-list) closure)
-(defun make-function (args exp env)
-  (make-closure :params args :body exp :env env))
+(serapeum:-> make-function (list t) closure)
+(defun make-function (args exp)
+  (make-closure :params args :body exp))
 
 (serapeum:-> extend (list list alist-list) alist-list)
 (defun extend (args params env)
@@ -99,17 +99,49 @@
                       (make-state :result (cadr exp)
                                   :env (update (cadr exp) (state-result result)
                                                (state-env result)))))
-               (lambda (make-state :result (make-function (cadr exp) (caddr exp) env)
+               (let (evaluate (caddr exp) (extend (mapcar #'cadr (cadr exp))
+                                                  (mapcar #'car (cadr exp))
+                                                  env)))
+               (+ (make-state
+                   :result
+                   (apply #'+ (mapcar #'state-result (evaluate-list (cdr exp) env)))
+                   :env
+                   env))
+               (* (make-state
+                   :result
+                   (apply #'* (mapcar #'state-result (evaluate-list (cdr exp) env)))
+                   :env
+                   env))
+               (/ (make-state
+                   :result
+                   (apply #'/ (mapcar #'state-result (evaluate-list (cdr exp) env)))
+                   :env
+                   env))
+               (- (make-state
+                   :result
+                   (apply #'- (mapcar #'state-result (evaluate-list (cdr exp) env)))
+                   :env
+                   env))
+               (= (make-state
+                   :result
+                   (apply #'= (mapcar #'state-result (evaluate-list (cdr exp) env)))
+                   :env
+                   env))
+               (if (if (state-result (evaluate (cadr exp) env))
+                       (evaluate (caddr exp) env)
+                       (evaluate (cadddr exp) env)))
+               (lambda (make-state :result (make-function (cadr exp) (caddr exp))
                               :env env))
                (otherwise (invoke (evaluate (car exp) env)
-                                  (evaluate-list (cdr exp) env))))))
+                                  (evaluate-list (cdr exp) env)
+                                  env)))))
        
-       (invoke (closure args)
+       (invoke (closure args env)
          (let ((args (mapcar #'state-result args))
                (closure (state-result closure)))
            (let ((result
                    (evaluate (closure-body closure)
-                             (extend args (closure-params closure) (closure-env closure)))))
+                             (extend args (closure-params closure) env))))
              (make-state :result (state-result result)
                          :env (rest (state-env result)))))))
     (state-result (evaluate exp env))))
