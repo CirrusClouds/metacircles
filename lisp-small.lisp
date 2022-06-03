@@ -3,25 +3,25 @@
 (in-package #:lisp-small)
 
 (deftype alist-list ()
-  `(satisfies alist-listp))
+  `(satisfies alist-list-p))
+
+(serapeum:-> alist-p (list) boolean)
+(defun alist-p (xs)
+  (every (lambda (x) (or (equal x 'nil)
+                    (consp x)))
+         xs))
 
 (serapeum:-> alist-list-p (t) boolean)
 (defun alist-list-p (xs)
-  (or (equal xs '(nil))
-      (and (consp xs)
-           (every (lambda (x)
-                    (and (consp x)
-                         (every (lambda (y)
-                                  (consp y))
-                                x)))
-                  xs))))
+  (or (consp xs)
+       (every (lambda (x) (alist-p x)) xs)))
 
 (serapeum:-> init-env () alist-list)
 (defun init-env () '(()))
 
 (defstruct closure params body env)
 
-(defstruct state result env)
+(defstruct state result (env '(()) :type alist-list))
 
 (define-condition binding-error (error)
   ((text :initarg :text :reader text)))
@@ -51,7 +51,7 @@
 (defun make-function (args exp env)
   (make-closure :params args :body exp :env env))
 
-(serapeum:-> extend (list list alist-list) list)
+(serapeum:-> extend (list list alist-list) alist-list)
 (defun extend (args params env)
   (labels ((aux (args params)
              (cond
@@ -107,10 +107,9 @@
        (invoke (closure args)
          (let ((args (mapcar #'state-result args))
                (closure (state-result closure)))
-           (if (typep closure 'closure)
-               (let ((result
-                       (evaluate (closure-body closure)
-                                 (extend args (closure-params closure) (closure-env closure)))))
-                 (make-state :result (state-result result)
-                             :env (rest (state-env result))))))))
+           (let ((result
+                   (evaluate (closure-body closure)
+                             (extend args (closure-params closure) (closure-env closure)))))
+             (make-state :result (state-result result)
+                         :env (rest (state-env result)))))))
     (state-result (evaluate exp env))))

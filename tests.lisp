@@ -25,4 +25,5 @@
   (fiveam:signals binding-error
     (eval2 '(progn
              ((lambda (x) x) 3)
-             x) (init-env))))
+             x) (init-env)))
+  )
